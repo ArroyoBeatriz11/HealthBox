@@ -145,8 +145,7 @@ void setup() {
   MovingAverageFilter<kAveragingSamples> averager_r;
   MovingAverageFilter<kAveragingSamples> averager_spo2;
   
-  // FALTAN LAS STATISTIS (NO SE HASTA QUE PUNTO SON NECESARIAS)
-  //??????????????
+  // FALTAN LAS STATISTIS 
   MinMaxAvgStatistic stat_red;
   MinMaxAvgStatistic stat_ir;
   
@@ -172,10 +171,6 @@ void setup() {
   // - CODE STATES LOOP ---------------------------------------------------------------
   void loop() {
     ArduinoCloud.update();
-    
-    temperatura = 36.8;
-    value_heartRate = 87;
-    value_spo2= 93;
   }
   
   //- FUNCTIONS THAT GET THE BIOMETRIC SIGNALS----------------------------------------
@@ -280,7 +275,8 @@ void setup() {
                   Serial.println(average_r);  
                   Serial.print("SpO2 (avg, %): ");
                   Serial.println(average_spo2);  
-                  if (mode = 1) return average_bpm;
+                  if (mode = 1) return average_spo2;
+                  // El HR lo cogemos del ECG
                 }
               }
               else {
@@ -349,6 +345,29 @@ void setup() {
     return (roundf(media * _potencia) / _potencia);
   }
   
+  /*
+     Funciones para ECG:
+  */ 
+  int amplitude; // Amplitud de la muestra en mv
+  int counter = 0; // Cuenta el numero de pulsos
+
+  int get_ecg(){ 
+   long time_start = mills() + 60000;
+   while (millis() <= time_start) {
+    if((digitalRead(16) == 1)||(digitalRead(17) == 1)){
+       Serial.println("Not connected!");
+    }else{
+      // send the value of analog input 0:
+        amplitude = analogRead(34);
+        if (amplitude >= 4) {
+          counter = counter +1;
+        }
+     }
+     delay(1);
+    }
+    return counter; // Devuelve el número de pulsos en 1 minuto
+  }
+
   
   /*
      INTERRUPCIONES Y CONTROL DEL PROCESO
@@ -384,10 +403,9 @@ void setup() {
   void onReadSPO2ButtonChange()  {
   
     if (readSPO2_Button) {
+      readSPO2_Button = false; 
       Serial.println("Entra funcion onReadSPO2ButtonChange");
-      value_heartRate = get_spo2_hr(1); // Subimos el resultado a IOT Cloud
-      readSPO2_Button = false; // Cuidado con esto 
-    } else {
-      
-    }
+      value_heartRate = get_ecg();
+      value_spo2 = get_spo2_hr(1); 
+    } 
   }
